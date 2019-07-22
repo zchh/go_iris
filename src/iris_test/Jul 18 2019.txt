@@ -1,0 +1,4 @@
+[INFO] 2019/07/18 14:28 Request path: /v1/person/7
+[INFO] 2019/07/18 14:29 Request path: /v1/person/7
+[INFO] 2019/07/18 14:33 Request path: /v1/person/7
+[INFO] 2019/07/18 14:37 delete person id = 7
