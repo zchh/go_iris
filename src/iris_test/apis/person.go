@@ -2,8 +2,10 @@ package apis
 
 import (
 	"fmt"
+	"github.com/unidoc/unioffice/document"
+	"github.com/unidoc/unioffice/measurement"
+	"github.com/unidoc/unioffice/schema/soo/wml"
 	"log"
-
 	//"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
@@ -12,73 +14,116 @@ import (
 
 	//"github.com/gin-gonic/gin"
 	"github.com/kataras/iris"
+	"github.com/kataras/iris/sessions"
 	"gopkg.in/go-playground/validator.v9"
 	. "iris_test/models"
-	"iris_test/service"
-    "github.com/kataras/iris/sessions"
 )
 
 var (
 	cookieNameForSessionID = "mycookiesessionnameid"
-	sess                   = sessions.New(sessions.Config{Cookie: cookieNameForSessionID})
+	sess                   = sessions.New(sessions.Config{Cookie: cookieNameForSessionID,Expires: 45*time.Minute})
 )
 
-
-var sessionMgr *service.SessionMgr = nil //session管理器
-
-
 func Login(c iris.Context)  {
-	//session 设置
-	//firstName := c.FormValue("user_name")
-	//lastName := c.FormValue("password")
+	session := sess.Start(c)
 
-	var userSession = make(map[interface{}]interface{})
+	session.Set("authenticated", true)
+	session.Set("user_id", 2)
 
-	userSession["user_id"] = "111"
+	//更新过期日期与新日期
+	sess.ShiftExpiration(c)
 
+	c.JSON(iris.Map{
+		"status":  http.StatusOK,
+	})
+}
 
-	session := service.SessionStore{"123",time.Now(),userSession}
+func Logout(c iris.Context)  {
 
-    session.Set("user_id", "1")
-
-	userId := session.Get("user_id")
+	session := sess.Start(c)
+	userId,_ := session.GetInt("user_id")
+    authen,_ := session.GetBoolean("authenticated")
+    midd := session.GetString("midd")
+	//destroy，删除整个会话数据和cookie
+	//sess.Destroy(c)
 
 
 	c.JSON(iris.Map{
 		"status":  http.StatusOK,
 		"user_id": userId,
+		"authen": authen,
+		"midd": midd,
+		//"user_id_2": userId2,
 	})
 }
 
-func Logout(c iris.Context)  {
-	var session service.SessionStore
-	user := session.Get("user_id")
-	c.JSON(iris.Map{
-		"status":  http.StatusOK,
-		"user": user,
-	})
-}
-
-func Login2(c iris.Context)  {
+func CheckLogin(c iris.Context) {
 	session := sess.Start(c)
-
-	session.Set("authenticated", true)
-	c.JSON(iris.Map{
-		"status":  http.StatusOK,
-	})
+	_,err := session.GetInt("user_id")
+	if err != nil{
+		c.JSON(iris.Map{
+			"status":  http.StatusUnauthorized,
+			//"user_id_2": userId2,
+		})
+	}else{
+		c.Next()
+	}
 }
 
-func Logout2(c iris.Context, w http.ResponseWriter, r *http.Request)  {
+func Export(c iris.Context) {
 
-	var sessionID = sessionMgr.CheckCookieValid(w, r)
+	var lorem = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin lobortis, lectus dictum feugiat tempus, sem neque finibus enim, sed eleifend sem nunc ac diam. Vestibulum tempus sagittis elementum`
 
-	sessionMgr.EndSession(w, r) //用户退出时删除对应session
-	http.Redirect(w, r, "/login", http.StatusFound)
-	c.JSON(iris.Map{
-		"status":  http.StatusOK,
-		"sessionID": sessionID,
-	})
+
+	doc := document.New()
+
+	// Force the TOC to update upon opening the document
+	doc.Settings.SetUpdateFieldsOnOpen(true)
+
+	// Add a TOC
+	doc.AddParagraph().AddRun().AddField(document.FieldTOC)
+	// followed by a page break
+	doc.AddParagraph().Properties().AddSection(wml.ST_SectionMarkNextPage)
+
+	nd := doc.Numbering.AddDefinition()
+	for i := 0; i < 9; i++ {
+		lvl := nd.AddLevel()
+		lvl.SetFormat(wml.ST_NumberFormatNone)
+		lvl.SetAlignment(wml.ST_JcLeft)
+		if i%2 == 0 {
+			lvl.SetFormat(wml.ST_NumberFormatBullet)
+			lvl.RunProperties().SetFontFamily("Symbol")
+			lvl.SetText("")
+		}
+		lvl.Properties().SetLeftIndent(0.5 * measurement.Distance(i) * measurement.Inch)
+	}
+
+	// and finally paragraphs at different heading levels
+	for i := 0; i < 4; i++ {
+		para := doc.AddParagraph()
+		para.SetNumberingDefinition(nd)
+		para.Properties().SetHeadingLevel(1)
+		para.AddRun().AddText("First Level")
+
+		doc.AddParagraph().AddRun().AddText(lorem)
+		for i := 0; i < 3; i++ {
+			para := doc.AddParagraph()
+			para.SetNumberingDefinition(nd)
+			para.Properties().SetHeadingLevel(2)
+			para.AddRun().AddText("Second Level")
+			doc.AddParagraph().AddRun().AddText(lorem)
+
+			para = doc.AddParagraph()
+			para.SetNumberingDefinition(nd)
+			para.Properties().SetHeadingLevel(3)
+			para.AddRun().AddText("Third Level")
+			doc.AddParagraph().AddRun().AddText(lorem)
+		}
+	}
+	doc.SaveToFile("toc.docx")
+
 }
+
 
 func todayFilename() string {
 	today := time.Now().Format("Jan 02 2006")
