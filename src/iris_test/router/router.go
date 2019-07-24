@@ -16,6 +16,9 @@ func InitRouter() *iris.Application {
 		v1.Get("/persons", GetPersonsApi)
 		v1.Get("/person/{id:uint64}", GetPersonApi)
 		v1.Get("/export", Export)
+		v1.Get("/exportWordByTemp", ExportWordByTemp)
+		v1.Get("/exportExcel", ExportExcel)
+		v1.Get("/download", Download)
 		v1.Put("/person/:id", ModPersonApi)
 		v1.Delete("/person/{id}", DelPersonApi)
 	}

@@ -5,6 +5,7 @@ import (
 	"github.com/unidoc/unioffice/document"
 	"github.com/unidoc/unioffice/measurement"
 	"github.com/unidoc/unioffice/schema/soo/wml"
+	"github.com/unidoc/unioffice/spreadsheet"
 	"log"
 	//"github.com/gin-gonic/gin"
 	"net/http"
@@ -121,7 +122,204 @@ func Export(c iris.Context) {
 		}
 	}
 	doc.SaveToFile("toc.docx")
+}
 
+func ExportWordByTemp(c iris.Context)  {
+
+	var lorem = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin lobortis, lectus dictum feugiat tempus, sem neque finibus enim, sed eleifend sem nunc ac diam. Vestibulum tempus sagittis elementum`
+
+
+	// When Word saves a document, it removes all unused styles.  This means to
+	// copy the styles from an existing document, you must first create a
+	// document that contains text in each style of interest.  As an example,
+	// see the template.docx in this directory.  It contains a paragraph set in
+	// each style that Word supports by default.
+	doc, err := document.OpenTemplate("resource/template.docx")
+	if err != nil {
+		log.Fatalf("error opening Windows Word 2016 document: %s", err)
+	}
+
+	// We can now print out all styles in the document, verifying that they
+	// exist.
+	for _, s := range doc.Styles.Styles() {
+		fmt.Println("style", s.Name(), "has ID of", s.StyleID(), "type is", s.Type())
+	}
+
+	// And create documents setting their style to the style ID (not style name).
+	para := doc.AddParagraph()
+	para.SetStyle("Title")
+	para.AddRun().AddText("My Document Title")
+
+	para = doc.AddParagraph()
+	para.SetStyle("Subtitle")
+	para.AddRun().AddText("Document Subtitle")
+
+	para = doc.AddParagraph()
+	para.SetStyle("Heading1")
+	para.AddRun().AddText("Major Section")
+	para = doc.AddParagraph()
+	para = doc.AddParagraph()
+	for i := 0; i < 4; i++ {
+		para.AddRun().AddText(lorem)
+	}
+
+	para = doc.AddParagraph()
+	para.SetStyle("Heading2")
+	para.AddRun().AddText("Minor Section")
+	para = doc.AddParagraph()
+	for i := 0; i < 4; i++ {
+		para.AddRun().AddText(lorem)
+	}
+
+	// using a pre-defined table style
+	table := doc.AddTable()
+	table.Properties().SetWidthPercent(90)
+	table.Properties().SetStyle("GridTable4-Accent1")
+	look := table.Properties().TableLook()
+	// these have default values in the style, so we manually turn some of them off
+	look.SetFirstColumn(false)
+	look.SetFirstRow(true)
+	look.SetLastColumn(false)
+	look.SetLastRow(true)
+	look.SetHorizontalBanding(true)
+
+	for r := 0; r < 5; r++ {
+		row := table.AddRow()
+		for c := 0; c < 5; c++ {
+			cell := row.AddCell()
+			cell.AddParagraph().AddRun().AddText(fmt.Sprintf("row %d col %d", r+1, c+1))
+		}
+	}
+	doc.SaveToFile("use-template.docx")
+
+
+	c.Header("Accept-Ranges", "bytes")
+	c.Header("Content-Disposition", "attachment; filename="+"use-template.docx")//文件名
+	c.Header("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	//最主要的一句
+	http.ServeFile(c.ResponseWriter(), c.Request(),"use-template.docx")
+
+}
+
+func ExportExcel(c iris.Context)  {
+	ss := spreadsheet.New()
+	sheet := ss.AddSheet()
+
+	header := [...]string{"用户名","部门","创建时间"}
+    cellArr := [...]string{"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"}
+
+	row := sheet.AddRow()   //下移
+	for i := 0; i < len(header); i++{
+
+
+        format := cellArr[i]+"0"
+
+		cell := row.AddNamedCell(fmt.Sprintf(format))
+
+		//cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+i))
+		cell.SetString(fmt.Sprintf("%s", header[i]))
+	}
+	row2 := sheet.AddRow()   //下移
+
+	mapss := map[string]interface{}{"username":"aaa","department":"研发部门","created":"2012-12-09"}
+	mapss2 := map[string]interface{}{"username":"bbb","department":"研发部门","created":"2012-12-09"}
+
+	mapArr2 := map[int]interface{}{0:mapss,1:mapss2}
+
+
+	for _,value := range mapArr2 {
+
+		for _,value2 := range value{
+
+
+		}
+
+
+		fmt.Println(value)
+	}
+
+
+
+	for j := 0;j < len(header); j++{
+
+		for d := 1; d <= len(mapArr2); d ++ {
+			format2 := cellArr[j]+string(d)
+
+			cell := row2.AddNamedCell(fmt.Sprintf(format2))
+
+
+
+			for _,value := range mapArr2 {
+				fmt.Println(value)
+			}
+
+			//cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+i))
+			cell.SetString(fmt.Sprintf("%s", header[i]))
+
+		}
+
+
+
+	}
+
+	for r := 0; r < 5; r++ {
+		row := sheet.AddRow()   //下移
+
+		// can't add an un-named cell to row zero here as we also add cell 'A1',
+		// meaning the un-naned cell must come before 'A1' which is invalid.
+		if r != 0 {
+			// an unnamed cell displays in the first available column
+			row.AddCell().SetString("unnamed-before") //右移赋值
+		}
+
+		// setting these to A, B, C, specifically
+		cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+r))
+		cell.SetString(fmt.Sprintf("row %d", r))
+
+		// an un-named cell after a named cell is display immediately after a named cell
+		row.AddCell().SetString("unnamed-after")
+	}
+
+	sheet.AddNumberedRow(26).AddNamedCell("C").SetString("Cell C26")
+
+	// This line would create an invalid sheet with two identically ID'd rows
+	// which would fail validation below
+	// sheet.AddNumberedRow(26).AddNamedCell("C27").SetString("Cell C27")
+
+	// so instead use Row which will create or retrieve an existing row
+	sheet.Row(26).AddNamedCell("E").SetString("Cell E26")
+	sheet.Row(26).Cell("F").SetString("Cell F26")
+
+	// You can also reference cells fully from the sheet.
+	sheet.Cell("H1").SetString("Cell H1")
+	sheet.Cell("H2").SetString("Cell H2")
+	sheet.Cell("H3").SetString("Cell H3")
+
+	if err := ss.Validate(); err != nil {
+		log.Fatalf("error validating sheet: %s", err)
+	}
+
+	ss.SaveToFile("resource/named-cells.xlsx")
+
+	c.Header("Accept-Ranges", "bytes")
+	c.Header("Content-Disposition", "attachment; filename="+"named-cells.xlsx")//文件名
+	c.Header("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	//最主要的一句
+	http.ServeFile(c.ResponseWriter(), c.Request(),"resource/named-cells.xlsx")
+}
+
+func Download(c iris.Context){
+	c.Header("Accept-Ranges", "bytes")
+	c.Header("Content-Disposition", "attachment; filename="+"toc.docx")//文件名
+	c.Header("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	//最主要的一句
+	http.ServeFile(c.ResponseWriter(), c.Request(),"toc.docx")
 }
 
 
