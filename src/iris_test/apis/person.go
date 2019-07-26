@@ -5,7 +5,7 @@ import (
 	"github.com/unidoc/unioffice/document"
 	"github.com/unidoc/unioffice/measurement"
 	"github.com/unidoc/unioffice/schema/soo/wml"
-	"github.com/unidoc/unioffice/spreadsheet"
+	"iris_test/service"
 	"log"
 	//"github.com/gin-gonic/gin"
 	"net/http"
@@ -203,114 +203,18 @@ func ExportWordByTemp(c iris.Context)  {
 
 }
 
-func ExportExcel(c iris.Context)  {
-	ss := spreadsheet.New()
-	sheet := ss.AddSheet()
+func ExportPerson(c iris.Context)  {
+	header := [...]string{"id","名","姓"}
 
-	header := [...]string{"用户名","部门","创建时间"}
-    cellArr := [...]string{"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"}
-
-	row := sheet.AddRow()   //下移
-	for i := 0; i < len(header); i++{
-
-
-        format := cellArr[i]+"0"
-
-		cell := row.AddNamedCell(fmt.Sprintf(format))
-
-		//cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+i))
-		cell.SetString(fmt.Sprintf("%s", header[i]))
+	var p Person
+	persons, err := p.GetPersons()
+	if err != nil {
+		log.Fatalln(err)
 	}
-	row2 := sheet.AddRow()   //下移
+	service.ExportExcel(c, header, persons)
 
-	mapss := map[string]interface{}{"username":"aaa","department":"研发部门","created":"2012-12-09"}
-	mapss2 := map[string]interface{}{"username":"bbb","department":"研发部门","created":"2012-12-09"}
-
-	mapArr2 := map[int]interface{}{0:mapss,1:mapss2}
-
-
-	for _,value := range mapArr2 {
-
-		for _,value2 := range value{
-
-
-		}
-
-
-		fmt.Println(value)
-	}
-
-
-
-	for j := 0;j < len(header); j++{
-
-		for d := 1; d <= len(mapArr2); d ++ {
-			format2 := cellArr[j]+string(d)
-
-			cell := row2.AddNamedCell(fmt.Sprintf(format2))
-
-
-
-			for _,value := range mapArr2 {
-				fmt.Println(value)
-			}
-
-			//cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+i))
-			cell.SetString(fmt.Sprintf("%s", header[i]))
-
-		}
-
-
-
-	}
-
-	for r := 0; r < 5; r++ {
-		row := sheet.AddRow()   //下移
-
-		// can't add an un-named cell to row zero here as we also add cell 'A1',
-		// meaning the un-naned cell must come before 'A1' which is invalid.
-		if r != 0 {
-			// an unnamed cell displays in the first available column
-			row.AddCell().SetString("unnamed-before") //右移赋值
-		}
-
-		// setting these to A, B, C, specifically
-		cell := row.AddNamedCell(fmt.Sprintf("%c", 'A'+r))
-		cell.SetString(fmt.Sprintf("row %d", r))
-
-		// an un-named cell after a named cell is display immediately after a named cell
-		row.AddCell().SetString("unnamed-after")
-	}
-
-	sheet.AddNumberedRow(26).AddNamedCell("C").SetString("Cell C26")
-
-	// This line would create an invalid sheet with two identically ID'd rows
-	// which would fail validation below
-	// sheet.AddNumberedRow(26).AddNamedCell("C27").SetString("Cell C27")
-
-	// so instead use Row which will create or retrieve an existing row
-	sheet.Row(26).AddNamedCell("E").SetString("Cell E26")
-	sheet.Row(26).Cell("F").SetString("Cell F26")
-
-	// You can also reference cells fully from the sheet.
-	sheet.Cell("H1").SetString("Cell H1")
-	sheet.Cell("H2").SetString("Cell H2")
-	sheet.Cell("H3").SetString("Cell H3")
-
-	if err := ss.Validate(); err != nil {
-		log.Fatalf("error validating sheet: %s", err)
-	}
-
-	ss.SaveToFile("resource/named-cells.xlsx")
-
-	c.Header("Accept-Ranges", "bytes")
-	c.Header("Content-Disposition", "attachment; filename="+"named-cells.xlsx")//文件名
-	c.Header("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-	c.Header("Pragma", "no-cache")
-	c.Header("Expires", "0")
-	//最主要的一句
-	http.ServeFile(c.ResponseWriter(), c.Request(),"resource/named-cells.xlsx")
 }
+
 
 func Download(c iris.Context){
 	c.Header("Accept-Ranges", "bytes")
