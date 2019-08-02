@@ -3,6 +3,7 @@ package databases
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 	"log"
 )
 //因为我们需要在其他地方使用SqlDB这个变量，所以需要大写代表public
@@ -42,4 +43,12 @@ func GetDbConnect() *sql.DB {
 		log.Fatal(err.Error())
 	}
 	return Con
+}
+
+func GetGormConnect() interface{} {
+	db,err := gorm.Open("mysql", "root:123456@tcp(127.0.0.1:12330)/test?charset=utf8")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return db
 }

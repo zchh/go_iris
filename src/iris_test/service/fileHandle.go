@@ -9,7 +9,8 @@ import (
 	"os"
 )
 
-func ExportExcel(c iris.Context, header [...]string, data map[int]map[string]string)  {
+//data map[int]map[string]string
+func ExportExcel(c iris.Context, header []string, data map[int]map[string]string)  {
 	ss := spreadsheet.New()
 	sheet := ss.AddSheet()
 	//header := [...]string{"用户名","部门","创建时间"}

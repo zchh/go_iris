@@ -2,10 +2,10 @@ package apis
 
 import (
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/unidoc/unioffice/document"
 	"github.com/unidoc/unioffice/measurement"
 	"github.com/unidoc/unioffice/schema/soo/wml"
-	"iris_test/service"
 	"log"
 	//"github.com/gin-gonic/gin"
 	"net/http"
@@ -18,12 +18,21 @@ import (
 	"github.com/kataras/iris/sessions"
 	"gopkg.in/go-playground/validator.v9"
 	. "iris_test/models"
+	"iris_test/service"
 )
 
 var (
 	cookieNameForSessionID = "mycookiesessionnameid"
 	sess                   = sessions.New(sessions.Config{Cookie: cookieNameForSessionID,Expires: 45*time.Minute})
 )
+
+
+type Product struct {
+	gorm.Model
+
+	Code string
+	Price uint
+}
 
 func Login(c iris.Context)  {
 	session := sess.Start(c)
@@ -204,15 +213,31 @@ func ExportWordByTemp(c iris.Context)  {
 }
 
 func ExportPerson(c iris.Context)  {
-	header := [...]string{"id","名","姓"}
-
+	header := []string{"名","姓"}
 	var p Person
-	persons, err := p.GetPersons()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	service.ExportExcel(c, header, persons)
+	paramMap := map[string]string{"fields":"first_name,last_name"}
+    results,_ := p.GetPersons(paramMap)
 
+    fmt.Println(results)
+	//查询出来的数组
+	service.ExportExcel(c, header, results)
+	//persons, err := p.GetPersons()
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+	//
+	//types := reflect.TypeOf(persons)
+	//
+	//fmt.Println(types)
+	//
+	//
+	//service.ExportExcel(c, header, persons)
+
+
+	c.JSON(iris.Map{
+		"status":  http.StatusNoContent,
+		"msg": "sss",
+	})
 }
 
 
@@ -281,15 +306,80 @@ func AddPersonApi(c iris.Context) {
 }
 
 func GetPersonsApi(c iris.Context) {
-	var p Person
-	persons, err := p.GetPersons()
+	//var p Person
+	//var paramMap = map[string]string{}
+	//paramMap["fields"] = "first_name,last_name"
+	////paramMap["keywords"] = "%ab%"
+	//persons, err := p.GetPersonsBind(paramMap)
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+
+
+	//  db, err := gorm.Open("mysql", "user:password@/dbname?charset=utf8&parseTime=True&loc=Local")
+	dbs,err := gorm.Open("mysql", "root:123456@tcp(127.0.0.1:12330)/test?charset=utf8")
 	if err != nil {
-		log.Fatalln(err)
+		panic("failed to connect database")
 	}
+
+	//if err != nil {
+	//	panic("failed to connect database")
+	//}
+	defer dbs.Close()
+	//
+	//// Migrate the schema
+	//dbs.AutoMigrate(&Product{})
+	//
+	//// Create
+	//db.Create(&Product{Code: "L1212", Price: 1000})
+
+	// Read
+	//var product Product
+
+
+
+	//rows, err := dbs.Debug().Unscoped().Model(&Product{}).Where("id = ?", 1).Select("code, price").Rows()
+	//fmt.Println(rows)
+
+
+
+	//
+	//dbs.Debug().Unscoped().Where("id = ?", 1).First(&product)
+    //log.Println(product)
+
+    var person Person
+
+
+	//row := dbs.Unscoped().Debug().Select("id,first_name,last_name").Table("person").Where("first_name = ?", "chi").Where("last_name = ?", "zz").Find(&person) // (*sql.Row)
+	//row.Scan(&person.Id, &person.FirstName, &person.LastName)
+
+
+	//row := dbs.Debug().Table("person").Unscoped().Select("first_name,last_name").Row().Scan(&person.FirstName, &person.LastName)
+
+	//aa := dbs.Debug().Unscoped().First(&product, 1).Scan(&product) // find product with id 1
+
+
+    row := dbs.Raw("SELECT first_name, last_name FROM person WHERE first_name = ?", "chi").Scan(&person)
+
+
+	log.Println(row)
+	log.Println(person)
+
+	//
+	//db.First(&product, "code = ?", "L1212") // find product with code l1212
+	//
+	//// Update - update product's price to 2000
+	//db.Model(&product).Update("Price", 2000)
+	//
+	//// Delete - delete product
+	//db.Delete(&product)
+
+
 
 	c.JSON(iris.Map{
 		"status":  http.StatusOK,
-		"persons": persons,
+		"aa":row,
+		"persons": person,
 	})
 }
 
