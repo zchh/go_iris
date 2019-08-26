@@ -45,7 +45,7 @@ func GetDbConnect() *sql.DB {
 	return Con
 }
 
-func GetGormConnect() interface{} {
+func GetGormConnect() *gorm.DB {
 	db,err := gorm.Open("mysql", "root:123456@tcp(127.0.0.1:12330)/test?charset=utf8")
 	if err != nil {
 		log.Fatal(err.Error())
